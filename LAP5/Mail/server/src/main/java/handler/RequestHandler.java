@@ -17,24 +17,24 @@ public class RequestHandler {
     }
 
     public String handle(String request) {
-        String[] parts = request.split("\\|", 4);
+        String[] parts = request.split("\\|", 5);
         try {
             switch (parts[0]) {
                 case "REGISTER":
-                    requireArgs(parts, 2);
-                    service.createAccount(parts[1]);
-                    return OK;
-                case "SEND":
-                    requireArgs(parts, 4);
-                    service.sendMail(parts[1], parts[2], parts[3]);
+                    requireArgs(parts, 3);
+                    service.createAccount(parts[1], parts[2]);
                     return OK;
                 case "LOGIN":
-                    requireArgs(parts, 2);
-                    List<String> files = service.listFiles(parts[1]);
+                    requireArgs(parts, 3);
+                    List<String> files = service.listFiles(parts[1], parts[2]);
                     return OK + "|" + String.join("|", files);
                 case "READ":
-                    requireArgs(parts, 3);
-                    return OK + "|" + service.readFile(parts[1], parts[2]);
+                    requireArgs(parts, 4);
+                    return OK + "|" + service.readFile(parts[1], parts[2], parts[3]);
+                case "SEND":
+                    requireArgs(parts, 5);
+                    service.sendMail(parts[1], parts[2], parts[3], parts[4]);
+                    return OK;
                 default:
                     return ERROR + "Lệnh không hợp lệ: " + parts[0];
             }

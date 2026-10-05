@@ -4,14 +4,17 @@ import app.MailClient;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
 public class MailFrame extends JFrame {
     private final MailClient client;
     private String currentUser;
+    private String currentPassword;
 
-    private final JTextField txtUsername = new JTextField(15);
+    private final JTextField txtUsername = new JTextField(10);
+    private final JPasswordField txtPassword = new JPasswordField(10);
     private final JButton btnRegister = new JButton("Tạo tài khoản");
     private final JButton btnLogin = new JButton("Đăng nhập");
     private final JButton btnReload = new JButton("Tải lại");
@@ -31,7 +34,7 @@ public class MailFrame extends JFrame {
 
         setTitle("Mail Client");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(850, 520);
+        setSize(980, 520);
         setLocationRelativeTo(null);
 
         setLayout(new BorderLayout(8, 8));
@@ -55,6 +58,8 @@ public class MailFrame extends JFrame {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panel.add(new JLabel("Tài khoản:"));
         panel.add(txtUsername);
+        panel.add(new JLabel("Mật khẩu:"));
+        panel.add(txtPassword);
         panel.add(btnRegister);
         panel.add(btnLogin);
         panel.add(btnReload);
@@ -106,16 +111,23 @@ public class MailFrame extends JFrame {
 
     private void onRegister() {
         String username = txtUsername.getText().trim();
+        String password = readPassword();
         runAsync(() -> {
-            client.register(username);
+            client.register(username, password);
             return username;
-        }, name -> lblStatus.setText("Đã tạo tài khoản: " + name));
+        }, name -> {
+            txtUsername.setText("");
+            txtPassword.setText("");
+            lblStatus.setText("Đã tạo tài khoản: " + name + " (hãy đăng nhập)");
+        });
     }
 
     private void onLogin() {
         String username = txtUsername.getText().trim();
-        runAsync(() -> client.login(username), files -> {
+        String password = readPassword();
+        runAsync(() -> client.login(username, password), files -> {
             currentUser = username;
+            currentPassword = password;
             showFiles(files);
             lblStatus.setText("Đã đăng nhập: " + username + " (" + files.size() + " file)");
         });
@@ -123,25 +135,27 @@ public class MailFrame extends JFrame {
 
     // Lấy lại danh sách file của tài khoản đang đăng nhập
     private void onReload() {
-        if (currentUser == null) {
-            lblStatus.setText("Hãy đăng nhập trước");
+        if (!isLoggedIn()) {
             return;
         }
-        runAsync(() -> client.login(currentUser), files -> {
+        String user = currentUser;
+        String password = currentPassword;
+        runAsync(() -> client.login(user, password), files -> {
             showFiles(files);
             lblStatus.setText("Đã tải lại: " + files.size() + " file");
         });
     }
 
     private void onSend() {
-        if (currentUser == null) {
-            lblStatus.setText("Hãy đăng nhập trước khi gửi email");
+        if (!isLoggedIn()) {
             return;
         }
+        String user = currentUser;
+        String password = currentPassword;
         String to = txtTo.getText().trim();
         String content = txtContent.getText();
         runAsync(() -> {
-            client.send(currentUser, to, content);
+            client.send(user, password, to, content);
             return null;
         }, result -> {
             txtContent.setText("");
@@ -157,14 +171,28 @@ public class MailFrame extends JFrame {
         if (fileName == null || currentUser == null) {
             return;
         }
-        runAsync(() -> client.read(currentUser, fileName), content -> {
+        String user = currentUser;
+        String password = currentPassword;
+        runAsync(() -> client.read(user, password, fileName), content -> {
             txtViewer.setText(content);
             txtViewer.setCaretPosition(0);
             lblStatus.setText("Đang xem: " + fileName);
         });
     }
 
-    private void showFiles(java.util.List<String> files) {
+    private boolean isLoggedIn() {
+        if (currentUser == null) {
+            lblStatus.setText("Hãy đăng nhập trước");
+            return false;
+        }
+        return true;
+    }
+
+    private String readPassword() {
+        return new String(txtPassword.getPassword());
+    }
+
+    private void showFiles(List<String> files) {
         inboxModel.clear();
         files.forEach(inboxModel::addElement);
         txtViewer.setText("");
