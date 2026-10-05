@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -19,20 +20,20 @@ public class MailService {
     private static final String WELCOME_FILE = "new_email.txt";
     private static final String WELCOME_TEXT =
             "Thank you for using this service. We hope that you will feel comfortable...";
+    private static final String PASSWORD_KEY = "password=";
 
     private static final Pattern VALID_NAME = Pattern.compile("^[a-zA-Z0-9_]{3,20}$");
-    private static final Pattern VALID_PASSWORD = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[^\\s|]{6,20}$");
     private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
 
     public void createAccount(String username, String password) throws MailException, IOException {
         Path folder = resolveFolder(username);
-//        validatePassword(password);
+        validatePassword(password);
         if (Files.exists(folder)) {
             throw new MailException("Tài khoản đã tồn tại");
         }
         Files.createDirectories(folder);
         Files.createDirectories(ACCOUNT_ROOT);
-        Files.write(passwordFile(username), password.getBytes(StandardCharsets.UTF_8));
+        saveAccount(username, password);
         Files.write(folder.resolve(WELCOME_FILE), WELCOME_TEXT.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -71,10 +72,11 @@ public class MailService {
 
     private Path authenticate(String username, String password) throws MailException, IOException {
         Path folder = resolveFolder(username);
-        Path passwordFile = passwordFile(username);
+        Path accountFile = passwordFile(username);
         boolean valid = Files.isDirectory(folder)
-                && Files.isRegularFile(passwordFile)
-                && new String(Files.readAllBytes(passwordFile), StandardCharsets.UTF_8).equals(password);
+                && Files.isRegularFile(accountFile)
+                && readLines(accountFile).stream()
+                .anyMatch(line -> line.equals(PASSWORD_KEY + password));
         if (!valid) {
             throw new MailException("Sai tài khoản hoặc mật khẩu");
         }
@@ -90,8 +92,8 @@ public class MailService {
     }
 
     private void validatePassword(String password) throws MailException {
-        if (password == null) {
-
+        if (password == null || password.isBlank()) {
+            throw new MailException("Mật khẩu không được để trống");
         }
     }
 
@@ -104,5 +106,17 @@ public class MailService {
 
     private Path passwordFile(String username) {
         return ACCOUNT_ROOT.resolve(username + ".txt");
+    }
+
+    private void saveAccount(String username, String password) throws IOException {
+        List<String> lines = Arrays.asList(
+                "username=" + username,
+                PASSWORD_KEY + password,
+                "createdAt=" + LocalDateTime.now());
+        Files.write(passwordFile(username), lines, StandardCharsets.UTF_8);
+    }
+
+    private List<String> readLines(Path file) throws IOException {
+        return Files.readAllLines(file, StandardCharsets.UTF_8);
     }
 }
