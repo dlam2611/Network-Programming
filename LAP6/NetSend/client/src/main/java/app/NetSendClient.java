@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 public class NetSendClient {
-    private static final String DEFAULT_SERVER_HOST = "127.0.0.1";
+    private static final String DEFAULT_SERVER_HOST = "10.203.143.162";
     private static final int SERVER_PORT = 5000;
     private static final int BUFFER_SIZE = 8192;
 
