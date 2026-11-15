@@ -1,0 +1,8 @@
+com\multiserver\common\model\ServerInfo.class
+com\multiserver\common\rmi\IBankService.class
+com\multiserver\common\model\OperationType.class
+com\multiserver\common\util\FormatUtil.class
+com\multiserver\common\util\PasswordUtil.class
+com\multiserver\common\model\User.class
+com\multiserver\common\model\AccessLog.class
+com\multiserver\common\model\Response.class
