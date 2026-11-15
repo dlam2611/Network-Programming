@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <title>Web Server Java</title>
+    <style>
+        body { font-family: "Segoe UI", sans-serif; max-width: 720px; margin: 40px auto; color: #222; background: #fff; }
+        h1 { color: #0084ff; }
+        section { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 16px 0; }
+        input, button { padding: 8px; margin: 4px 0; }
+        button { background: #0084ff; color: #fff; border: 0; border-radius: 6px; cursor: pointer; }
+        a { color: #0084ff; }
+    </style>
+</head>
+<body>
+<h1>🌐 Web Server viết bằng Java</h1>
+
+<section>
+    <h3>GET – nhiều loại dịch vụ file</h3>
+    <p><a href="/files">Xem danh sách file (.pdf, .mp3, .mp4, ...)</a></p>
+    <p>Trang nhiều link: dùng nút Back / Forward của trình duyệt để xem lịch sử.</p>
+</section>
+
+<section>
+    <h3>POST – gửi dữ liệu form</h3>
+    <form method="POST" action="/submit">
+        <input name="name" placeholder="Họ tên"><br>
+        <input name="message" placeholder="Lời nhắn"><br>
+        <button type="submit">Gửi POST</button>
+    </form>
+</section>
+
+<section>
+    <h3>HEAD</h3>
+    <p>Kiểm tra bằng lệnh: <code>curl -I http://localhost:8080/</code></p>
+</section>
+</body>
+</html>
