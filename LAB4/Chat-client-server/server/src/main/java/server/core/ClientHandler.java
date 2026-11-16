@@ -44,7 +44,7 @@ class ClientHandler implements Runnable {
             server.broadcastUsers();
 
             while (true) {
-                m = (Message) in.readObject();
+                m = (Message) in.readObject(); // đọc tin nhắn
                 m.from = user;
                 m.time = System.currentTimeMillis();
                 server.route(this, m);

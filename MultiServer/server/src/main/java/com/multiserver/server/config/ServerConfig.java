@@ -8,62 +8,72 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /**
- * Đọc cấu hình Server từ file .properties:
- * 1. Port và Database của chính Server mình.
- * 2. Địa chỉ IP và Port của Server đối ứng (của người ta) để đồng bộ.
+ * Đọc cấu hình Server từ duy nhất file server.properties:
+ * Không có bất kỳ giá trị hardcode/mặc định nào trong code.
+ * Mọi giá trị (IP, port, database, user, password) bắt buộc phải đọc từ file.
  */
 public class ServerConfig {
-    private String serverName = "Server 1";
-    private int serverPort = 1099;
+    private String serverName;
+    private String serverHost;
+    private int serverPort;
 
-    private String peerName = "Server 2";
-    private String peerHost = "127.0.0.1";
-    private int peerPort = 1098;
+    private String peerName;
+    private String peerHost;
+    private int peerPort;
 
-    private String dbUrl = "jdbc:postgresql://localhost:5432/RMIDATABASE";
-    private String dbUser = "postgres";
-    private String dbPassword = "123";
+    private String dbUrl;
+    private String dbUser;
+    private String dbPassword;
 
     public ServerConfig() {
     }
 
     public static ServerConfig load(String filePath) {
         ServerConfig config = new ServerConfig();
-        Properties props = new Properties();
 
+        // Tìm kiếm file tại 1 chỗ duy nhất: thư mục config/ của dự án
         File file = new File(filePath);
-        if (file.exists()) {
-            try (InputStream in = new FileInputStream(file)) {
-                props.load(in);
-            } catch (Exception e) {
-                System.err.println("Không thể đọc file cấu hình: " + filePath + ", lỗi: " + e.getMessage());
-            }
-        } else {
-            try (InputStream in = ServerConfig.class.getClassLoader().getResourceAsStream(filePath)) {
-                if (in != null) {
-                    props.load(in);
-                } else {
-                    System.out.println("Không tìm thấy file cấu hình '" + filePath + "', sử dụng cấu hình mặc định.");
-                }
-            } catch (Exception e) {
-                System.err.println("Lỗi khi đọc file classpath: " + filePath + ", " + e.getMessage());
-            }
+        if (!file.exists()) {
+            file = new File("../" + filePath);
+        }
+        if (!file.exists()) {
+            throw new IllegalStateException("LỖI: Không tìm thấy file cấu hình server tại: " + file.getAbsolutePath());
         }
 
-        if (!props.isEmpty()) {
-            config.serverName = props.getProperty("server.name", config.serverName).trim();
-            config.serverPort = Integer.parseInt(props.getProperty("server.port", String.valueOf(config.serverPort)).trim());
+        System.out.println("Server đang nạp cấu hình từ duy nhất file: " + file.getAbsolutePath());
 
-            config.peerName = props.getProperty("peer.name", config.peerName).trim();
-            config.peerHost = props.getProperty("peer.host", config.peerHost).trim();
-            config.peerPort = Integer.parseInt(props.getProperty("peer.port", String.valueOf(config.peerPort)).trim());
-
-            config.dbUrl = props.getProperty("db.url", config.dbUrl).trim();
-            config.dbUser = props.getProperty("db.user", config.dbUser).trim();
-            config.dbPassword = props.getProperty("db.password", config.dbPassword).trim();
+        Properties props = new Properties();
+        try (InputStream in = new FileInputStream(file)) {
+            props.load(in);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể đọc file cấu hình: " + file.getAbsolutePath(), e);
         }
+
+        // Đọc tường minh mọi cấu hình từ file, KHÔNG có giá trị hardcode trong code
+        config.serverName = getRequiredProperty(props, "server.name", file);
+        config.serverPort = Integer.parseInt(getRequiredProperty(props, "server.port", file));
+
+        if (props.containsKey("server.host") && !props.getProperty("server.host").trim().isEmpty()) {
+            config.serverHost = props.getProperty("server.host").trim();
+        }
+
+        config.peerName = getRequiredProperty(props, "peer.name", file);
+        config.peerHost = getRequiredProperty(props, "peer.host", file);
+        config.peerPort = Integer.parseInt(getRequiredProperty(props, "peer.port", file));
+
+        config.dbUrl = getRequiredProperty(props, "db.url", file);
+        config.dbUser = getRequiredProperty(props, "db.user", file);
+        config.dbPassword = getRequiredProperty(props, "db.password", file);
 
         return config;
+    }
+
+    private static String getRequiredProperty(Properties props, String key, File file) {
+        String val = props.getProperty(key);
+        if (val == null || val.trim().isEmpty()) {
+            throw new IllegalStateException("Lỗi cấu hình: Thiếu trường bắt buộc '" + key + "' trong file " + file.getAbsolutePath());
+        }
+        return val.trim();
     }
 
     public String getServerName() { return serverName; }
@@ -72,8 +82,13 @@ public class ServerConfig {
     public int getServerPort() { return serverPort; }
     public void setServerPort(int serverPort) { this.serverPort = serverPort; }
 
-    // Tự động lấy IP của máy hiện tại, không bắt người dùng cấu hình thủ công
-    public String getServerHost() { return FormatUtil.getLocalIpAddress(); }
+    public String getServerHost() {
+        if (serverHost != null && !serverHost.isBlank()) {
+            return serverHost;
+        }
+        return FormatUtil.getLocalIpAddress();
+    }
+    public void setServerHost(String serverHost) { this.serverHost = serverHost; }
 
     public String getPeerName() { return peerName; }
     public void setPeerName(String peerName) { this.peerName = peerName; }
@@ -97,6 +112,7 @@ public class ServerConfig {
     public String toString() {
         return "ServerConfig{" +
                 "name='" + serverName + '\'' +
+                ", host='" + getServerHost() + '\'' +
                 ", port=" + serverPort +
                 ", peer=" + peerName + "(" + peerHost + ":" + peerPort + ")" +
                 ", dbUrl='" + dbUrl + '\'' +

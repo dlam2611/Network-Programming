@@ -10,54 +10,50 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Đọc cấu hình Client từ client.properties:
- * Cấu hình rõ ràng địa chỉ IP và Port của từng Server:
- * server1.host, server1.port
- * server2.host, server2.port
+ * Đọc cấu hình Client từ duy nhất file client.properties:
+ * Không có bất kỳ giá trị hardcode/mặc định nào trong code.
+ * Mọi giá trị (IP, port của Server 1 và Server 2) bắt buộc phải đọc từ file.
  */
 public class ClientConfig {
     private final List<ServerInfo> servers = new ArrayList<>();
-    private int timeoutMs = 3000;
+    private int timeoutMs;
 
     public ClientConfig() {
     }
 
     public static ClientConfig load(String filePath) {
         ClientConfig config = new ClientConfig();
-        Properties props = new Properties();
 
+        // Tìm kiếm file tại 1 chỗ duy nhất: thư mục config/ của dự án
         File file = new File(filePath);
-        if (file.exists()) {
-            try (InputStream in = new FileInputStream(file)) {
-                props.load(in);
-            } catch (Exception e) {
-                System.err.println("Không đọc được file: " + filePath + ", " + e.getMessage());
-            }
-        } else {
-            try (InputStream in = ClientConfig.class.getClassLoader().getResourceAsStream(filePath)) {
-                if (in != null) {
-                    props.load(in);
-                }
-            } catch (Exception ignored) {
-            }
+        if (!file.exists()) {
+            file = new File("../" + filePath);
+        }
+        if (!file.exists()) {
+            throw new IllegalStateException("LỖI: Không tìm thấy file cấu hình client tại: " + file.getAbsolutePath());
         }
 
-        config.timeoutMs = Integer.parseInt(props.getProperty("connect.timeout", "3000").trim());
+        System.out.println("Client đang nạp cấu hình từ duy nhất file: " + file.getAbsolutePath());
 
-        // 1. Đọc cấu hình tường minh từng Server: server1.host/port, server2.host/port
-        String s1Host = props.getProperty("server1.host", props.getProperty("server1.ip", "127.0.0.1"));
-        String s1Port = props.getProperty("server1.port", "1099");
-        if (s1Host != null && s1Port != null) {
-            config.servers.add(new ServerInfo(1, "Server 1", s1Host.trim(), Integer.parseInt(s1Port.trim())));
+        Properties props = new Properties();
+        try (InputStream in = new FileInputStream(file)) {
+            props.load(in);
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể đọc file cấu hình: " + file.getAbsolutePath(), e);
         }
 
-        String s2Host = props.getProperty("server2.host", props.getProperty("server2.ip", "127.0.0.1"));
-        String s2Port = props.getProperty("server2.port", "1098");
-        if (s2Host != null && s2Port != null) {
-            config.servers.add(new ServerInfo(2, "Server 2", s2Host.trim(), Integer.parseInt(s2Port.trim())));
-        }
+        // Đọc tường minh mọi cấu hình từ file, KHÔNG có giá trị hardcode trong code
+        config.timeoutMs = Integer.parseInt(getRequiredProperty(props, "connect.timeout", file));
 
-        // 2. Hỗ trợ dạng danh sách servers=IP:Port,IP:Port nếu có
+        String s1Host = getRequiredProperty(props, "server1.host", file);
+        String s1Port = getRequiredProperty(props, "server1.port", file);
+        config.servers.add(new ServerInfo(1, "Server 1", s1Host, Integer.parseInt(s1Port)));
+
+        String s2Host = getRequiredProperty(props, "server2.host", file);
+        String s2Port = getRequiredProperty(props, "server2.port", file);
+        config.servers.add(new ServerInfo(2, "Server 2", s2Host, Integer.parseInt(s2Port)));
+
+        // Hỗ trợ thêm trường hợp cấu hình danh sách servers nếu có
         String serversStr = props.getProperty("servers");
         if (serversStr != null && !serversStr.isBlank()) {
             config.servers.clear();
@@ -75,7 +71,16 @@ public class ClientConfig {
             }
         }
 
+        System.out.println("Danh sách máy chủ đọc từ file cấu hình: " + config.servers);
         return config;
+    }
+
+    private static String getRequiredProperty(Properties props, String key, File file) {
+        String val = props.getProperty(key);
+        if (val == null || val.trim().isEmpty()) {
+            throw new IllegalStateException("Lỗi cấu hình: Thiếu trường bắt buộc '" + key + "' trong file " + file.getAbsolutePath());
+        }
+        return val.trim();
     }
 
     public List<ServerInfo> getServers() {
