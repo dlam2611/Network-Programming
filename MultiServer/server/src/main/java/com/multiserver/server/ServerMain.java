@@ -53,7 +53,9 @@ public class ServerMain {
         System.out.println("Thông tin Server khởi chạy: " + config);
 
         // Đảm bảo RMI sử dụng đúng IP
-        System.setProperty("java.rmi.server.hostname", config.getServerHost());
+        String rmiHost = config.getServerHost();
+        System.setProperty("java.rmi.server.hostname", rmiHost);
+        System.out.println("Thiết lập RMI Hostname cho client/peer kết nối: " + rmiHost);
 
         // 1. Tự động khởi tạo Database của Server và bảng 'users' nếu chưa có
         DatabaseInitializer.initialize(config);

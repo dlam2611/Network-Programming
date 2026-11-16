@@ -79,7 +79,9 @@ public class PeerSyncManager {
                 return;
             }
         } catch (Exception e) {
-            // Không kết nối được
+            // In chi tiết lỗi để dễ chẩn đoán mạng giữa 2 server
+            // (ví dụ: Connection timed out do tường lửa, hoặc sai IP RMI)
+            // System.err.println("[" + config.getServerName() + "] Chưa kết nối được tới " + config.getPeerName() + " (" + config.getPeerHost() + ":" + config.getPeerPort() + "): " + e.getMessage());
         }
 
         peerService = null;
