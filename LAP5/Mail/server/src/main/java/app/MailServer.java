@@ -40,7 +40,7 @@ public class MailServer {
 
                 String request = new String(
                         packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8);
-                byte[] response = handler.handle(request).getBytes(StandardCharsets.UTF_8);
+                byte[] response = handler.handle(request, clientAddress.getHostAddress()).getBytes(StandardCharsets.UTF_8);
                 socket.send(new DatagramPacket(response, response.length, clientAddress, clientPort));
             }
         } catch (IOException e) {

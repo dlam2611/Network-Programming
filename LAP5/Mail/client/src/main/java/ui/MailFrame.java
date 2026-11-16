@@ -24,6 +24,7 @@ public class MailFrame extends JFrame {
     private final JTextArea txtViewer = new JTextArea();
 
     private final JTextField txtTo = new JTextField();
+    private final JTextField txtSubject = new JTextField();
     private final JTextArea txtContent = new JTextArea();
     private final JButton btnSend = new JButton("Gửi email");
 
@@ -92,9 +93,20 @@ public class MailFrame extends JFrame {
 
     // Bên phải: soạn và gửi email
     private JPanel buildComposePanel() {
-        JPanel toPanel = new JPanel(new BorderLayout(6, 0));
-        toPanel.add(new JLabel("Gửi đến:"), BorderLayout.WEST);
-        toPanel.add(txtTo, BorderLayout.CENTER);
+        JPanel headerPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(3, 3, 3, 3);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridx = 0; gbc.gridy = 0; gbc.weightx = 0;
+        headerPanel.add(new JLabel("Gửi đến:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 1.0;
+        headerPanel.add(txtTo, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1; gbc.weightx = 0;
+        headerPanel.add(new JLabel("Tiêu đề:"), gbc);
+        gbc.gridx = 1; gbc.gridy = 1; gbc.weightx = 1.0;
+        headerPanel.add(txtSubject, gbc);
 
         txtContent.setLineWrap(true);
         txtContent.setWrapStyleWord(true);
@@ -103,7 +115,7 @@ public class MailFrame extends JFrame {
 
         JPanel panel = new JPanel(new BorderLayout(6, 6));
         panel.setBorder(BorderFactory.createEmptyBorder(0, 6, 0, 6));
-        panel.add(toPanel, BorderLayout.NORTH);
+        panel.add(headerPanel, BorderLayout.NORTH);
         panel.add(contentPane, BorderLayout.CENTER);
         panel.add(btnSend, BorderLayout.SOUTH);
         return panel;
@@ -153,11 +165,30 @@ public class MailFrame extends JFrame {
         String user = currentUser;
         String password = currentPassword;
         String to = txtTo.getText().trim();
+        String subject = txtSubject.getText().trim();
         String content = txtContent.getText();
+
+        if (to.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tài khoản người nhận",
+                    "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (subject.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập tiêu đề email",
+                    "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (content.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Nội dung email không được để trống",
+                    "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
         runAsync(() -> {
-            client.send(user, password, to, content);
+            client.send(user, password, to, subject, content);
             return null;
         }, result -> {
+            txtSubject.setText("");
             txtContent.setText("");
             lblStatus.setText("Đã gửi email đến " + to);
             JOptionPane.showMessageDialog(this, "Gửi email thành công đến " + to,

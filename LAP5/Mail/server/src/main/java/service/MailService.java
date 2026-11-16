@@ -26,6 +26,10 @@ public class MailService {
     private static final DateTimeFormatter FILE_TIME = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss_SSS");
 
     public void createAccount(String username, String password) throws MailException, IOException {
+        createAccount(username, password, "127.0.0.1");
+    }
+
+    public void createAccount(String username, String password, String clientIp) throws MailException, IOException {
         Path folder = resolveFolder(username);
         validatePassword(password);
         if (Files.exists(folder)) {
@@ -33,19 +37,46 @@ public class MailService {
         }
         Files.createDirectories(folder);
         Files.createDirectories(ACCOUNT_ROOT);
-        saveAccount(username, password);
-        Files.write(folder.resolve(WELCOME_FILE), WELCOME_TEXT.getBytes(StandardCharsets.UTF_8));
+        saveAccount(username, password, clientIp);
+
+        String effectiveIp = (clientIp != null && !clientIp.isBlank()) ? clientIp : "127.0.0.1";
+        String welcomeContent = "Người gửi: System\n"
+                + "IP người gửi: Server (" + effectiveIp + ")\n"
+                + "Tiêu đề: Chào mừng bạn gia nhập hệ thống Mail\n"
+                + "Thời gian: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n"
+                + "--------------------------------------------------\n"
+                + WELCOME_TEXT;
+
+        Files.write(folder.resolve(WELCOME_FILE), welcomeContent.getBytes(StandardCharsets.UTF_8));
     }
 
     public void sendMail(String from, String password, String to, String content)
             throws MailException, IOException {
+        sendMail(from, password, to, "Không có tiêu đề", content, "127.0.0.1");
+    }
+
+    public void sendMail(String from, String password, String to, String subject, String content, String senderIp)
+            throws MailException, IOException {
         authenticate(from, password);
         Path receiverFolder = requireExistingAccount(to);
-        if (content.isBlank()) {
+        if (content == null || content.isBlank()) {
             throw new MailException("Nội dung email không được để trống");
         }
+        if (subject == null || subject.isBlank()) {
+            subject = "Không có tiêu đề";
+        }
+
+        String effectiveSenderIp = (senderIp != null && !senderIp.isBlank()) ? senderIp : "127.0.0.1";
         String fileName = LocalDateTime.now().format(FILE_TIME) + "_from_" + from + ".txt";
-        Files.write(receiverFolder.resolve(fileName), content.getBytes(StandardCharsets.UTF_8));
+
+        String fileContent = "Người gửi: " + from + "\n"
+                + "IP người gửi: " + effectiveSenderIp + "\n"
+                + "Tiêu đề: " + subject + "\n"
+                + "Thời gian: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) + "\n"
+                + "--------------------------------------------------\n"
+                + content;
+
+        Files.write(receiverFolder.resolve(fileName), fileContent.getBytes(StandardCharsets.UTF_8));
     }
 
     public List<String> listFiles(String username, String password) throws MailException, IOException {
@@ -108,12 +139,56 @@ public class MailService {
         return ACCOUNT_ROOT.resolve(username + ".txt");
     }
 
-    private void saveAccount(String username, String password) throws IOException {
+    private void saveAccount(String username, String password, String ip) throws IOException {
         List<String> lines = Arrays.asList(
                 "username=" + username,
                 PASSWORD_KEY + password,
+                "ip=" + (ip != null && !ip.isBlank() ? ip : "127.0.0.1"),
                 "createdAt=" + LocalDateTime.now());
         Files.write(passwordFile(username), lines, StandardCharsets.UTF_8);
+    }
+
+    public String getAccountIp(String username) {
+        try {
+            Path accountFile = passwordFile(username);
+            if (!Files.isRegularFile(accountFile)) {
+                return "";
+            }
+            return readLines(accountFile).stream()
+                    .filter(line -> line.startsWith("ip="))
+                    .map(line -> line.substring("ip=".length()).trim())
+                    .findFirst()
+                    .orElse("");
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    public void updateAccountIp(String username, String ip) {
+        if (ip == null || ip.isBlank()) {
+            return;
+        }
+        try {
+            Path accountFile = passwordFile(username);
+            if (Files.isRegularFile(accountFile)) {
+                List<String> lines = readLines(accountFile);
+                boolean found = false;
+                List<String> updated = new java.util.ArrayList<>();
+                for (String line : lines) {
+                    if (line.startsWith("ip=")) {
+                        updated.add("ip=" + ip);
+                        found = true;
+                    } else {
+                        updated.add(line);
+                    }
+                }
+                if (!found) {
+                    updated.add("ip=" + ip);
+                }
+                Files.write(accountFile, updated, StandardCharsets.UTF_8);
+            }
+        } catch (IOException ignored) {
+        }
     }
 
     private List<String> readLines(Path file) throws IOException {

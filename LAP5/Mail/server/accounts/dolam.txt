@@ -1,0 +1,4 @@
+username=dolam
+password=lam123
+createdAt=2026-11-16T12:03:03.410596
+ip=127.0.0.1

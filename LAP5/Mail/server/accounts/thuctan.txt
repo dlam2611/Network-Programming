@@ -1,0 +1,4 @@
+username=thuctan
+password=123
+createdAt=2026-11-16T12:03:56.955046200
+ip=127.0.0.1
